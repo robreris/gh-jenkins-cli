@@ -2,30 +2,28 @@ package cmd
 
 import (
   "fmt"
+  "log"
   "github.com/spf13/cobra"
   "github.com/robreris/gh-jenkins-cli/jenkins"
-  "io/ioutil"
 )
 
-var jobName string
-var configFile string
+var (
+  jobName       string
+  configXMLPath string
+)
 
 var createJobCmd = &cobra.Command{
   Use: "create-job",
   Short: "Create a new Jenkins job",
   Run: func(cmd *cobra.Command, args []string) {
-    jc := jenkins.NewCLIClient()
+    client := jenkins.NewCLIClient()
 
-    configXML, err := ioutil.ReadFile(configFile)
-    if err != nil {
-      fmt.Println("Error reading config file: ", err)
-      return
+    if jobName == "" || configXMLPath == "" {
+      log.Fatal("Missing some flags.")
     }
-
-    err = jc.CreateJob(jobName, string(configXML))
-    if err != nil {
-      fmt.Println("Error creating Jenkins job: ", err)
-      return
+ 
+    if err := client.CreateJob(jobName, configXMLPath); err != nil {
+      log.Fatal("Error creating Jenkins job: ", err)
     }
 
     fmt.Printf("Jenkins job '%s' created successfully.\n", jobName)
@@ -35,7 +33,6 @@ var createJobCmd = &cobra.Command{
 func init() {
   rootCmd.AddCommand(createJobCmd)
   createJobCmd.Flags().StringVarP(&jobName, "name", "n", "", "Name of Jenkins job.")
-  createJobCmd.Flags().StringVarP(&configFile, "config", "c", "", "Path to config XML file.")
+  createJobCmd.Flags().StringVarP(&configXMLPath, "config-xml", "c", "jenkins/template-config.xml", "Path to config XML file.") 
   createJobCmd.MarkFlagRequired("name")
-  createJobCmd.MarkFlagRequired("config") 
 }
