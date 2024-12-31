@@ -6,15 +6,16 @@ import (
   "github.com/robreris/gh-jenkins-cli/github"
 )
 
+var orgName string
 var repoName string
 var private bool
 
 var createRepoCmd = &cobra.Command{
   Use:	"create-repo",
-  Short: "Create a new repo",
+  Short: "Create a new repo in FortinetCloudCSE org",
   Run: func(cmd *cobra.Command, args []string) {
     client := github.NewClient()
-    repo, err := client.CreateRepo(repoName, private)
+    repo, err := client.CreateRepo("FortinetCloudCSE", repoName, private)
     if err != nil {
       fmt.Println("Error creating repository:", err)
       return
