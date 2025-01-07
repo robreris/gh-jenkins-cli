@@ -68,9 +68,15 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
     return nil, fmt.Errorf("error updating README.md: %v", err)
   }
 
-  err = c.AddBranchProtection(orgName, name)
+  //err = c.AddBranchProtection(orgName, name)
+  //if err != nil {
+  //  return nil, err
+  //}
+
+  webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
+  err = c.CreateWebhook(orgName, name, webhookURL)
   if err != nil {
-    return nil, err
+    return nil, fmt.Errorf("error creating webhook: %v", err)
   }
 
   return createdRepo, nil
@@ -238,5 +244,31 @@ func (c *Client) AddOrUpdateREADME(orgName string, repoName string, content stri
 	}
 
 	return nil
+}
+
+func (c *Client) CreateWebhook(orgName string, repoName string, webhookURL string) error {
+
+  ctx := context.Background()
+
+  webhookConfig := map[string]interface{}{
+    "url": 	    webhookURL,
+    "content_type": "json",
+  }
+
+  hook := &github.Hook{
+    Name: github.String("web"),
+    Active: github.Bool(true),
+    Events: []string{"push"},
+    Config: webhookConfig,
+  }
+
+  _, _, err := c.client.Repositories.CreateHook(ctx, orgName, repoName, hook)
+  if err != nil {
+    return fmt.Errorf("error creating webhook for repository '%s': %v", repoName, err)
+  }
+
+  fmt.Printf("Webhook created successfully for repository '%s' with URL '%s'\n", repoName, webhookURL)
+  return nil
+
 }
 
