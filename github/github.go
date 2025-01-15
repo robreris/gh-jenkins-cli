@@ -68,15 +68,21 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
     return nil, fmt.Errorf("error updating README.md: %v", err)
   }
 
-  //err = c.AddBranchProtection(orgName, name)
-  //if err != nil {
-  //  return nil, err
-  //}
-
   webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
   err = c.CreateWebhook(orgName, name, webhookURL)
   if err != nil {
     return nil, fmt.Errorf("error creating webhook: %v", err)
+  }
+
+  statusCheck := "ci/jenkins/build-status"
+  err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
+  if err != nil {
+    return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
+  }
+
+  err = c.AddBranchProtection(orgName, name)
+  if err != nil {
+    return nil, err
   }
 
   return createdRepo, nil
@@ -133,7 +139,7 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
     RequiredStatusChecks: &github.RequiredStatusChecks{
       Strict: true,
       Contexts: []string{"ci/jenkins/build-status"},
-      Checks: nil,
+      //Checks: nil,
     },
     EnforceAdmins: false,
     Restrictions: nil,
@@ -143,6 +149,8 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
       RequiredApprovingReviewCount: 	1,
     },
   }
+
+  fmt.Printf("Branch protection payload: %+v\n", protectionRequest)
 
   _, _, err := c.client.Repositories.UpdateBranchProtection(ctx, orgName, repoName, "main", protectionRequest)
   if err != nil {
@@ -272,3 +280,28 @@ func (c *Client) CreateWebhook(orgName string, repoName string, webhookURL strin
 
 }
 
+func (c *Client) WaitForStatusCheck(orgName, repoName, branch, statusCheck string) error {
+  ctx := context.Background()
+
+  maxRetries := 10
+  retryDelay := 2 * time.Second
+
+  for i := 0; i < maxRetries; i++ {
+
+    statuses, _, err := c.client.Repositories.ListStatuses(ctx, orgName, repoName, branch, nil)
+    if err != nil {
+      return fmt.Errorf("error fetching status checks for branch '%s': %v", branch, err)
+    }
+
+    for _, status := range statuses {
+      if status.GetContext() == statusCheck {
+        return nil // status check available
+      }
+    }
+
+    fmt.Printf("Waiting for status check '%s' to be reported (attempt %d/%d)...\n", statusCheck, i+1, maxRetries)
+    time.Sleep(retryDelay)
+  }
+
+  return fmt.Errorf("status check '%s' not reported after multiple attempts", statusCheck)
+}
