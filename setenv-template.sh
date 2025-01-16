@@ -1,3 +1,4 @@
+#!/bin/bash
 export GITHUB_TOKEN=mytoken123
 export JENKINS_URL=https://jenkinsurl.com:8443
 export JENKINS_USER_ID=myusername
