@@ -9,7 +9,7 @@ import (
   "time"
 
   "golang.org/x/oauth2"
-  "github.com/google/go-github/v50/github"
+  "github.com/google/go-github/v68/github"
 )
 
 type Client struct {
@@ -121,7 +121,7 @@ func (c *Client) WaitForMainBranch(orgName string, repoName string) error {
   retryDelay := 2 * time.Second
 
   for i := 0; i < maxRetries; i++ {
-    branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", false)
+    branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", 1)
     if err == nil && branch != nil {
       return nil
     }
@@ -138,8 +138,7 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
   protectionRequest := &github.ProtectionRequest{
     RequiredStatusChecks: &github.RequiredStatusChecks{
       Strict: true,
-      Contexts: []string{"ci/jenkins/build-status"},
-      //Checks: nil,
+      Contexts: &[]string{"ci/jenkins/build-status"},
     },
     EnforceAdmins: false,
     Restrictions: nil,
@@ -156,6 +155,7 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
   if err != nil {
     return err
   }
+
   return nil
 }
 
@@ -194,7 +194,7 @@ func (c *Client) AddOrUpdateREADME(orgName string, repoName string, content stri
 	ctx := context.Background()
 
 	// Get the latest commit and tree SHA from the main branch
-	branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", false)
+	branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", 1)
 	if err != nil {
 		return fmt.Errorf("error fetching branch information: %v", err)
 	}
@@ -235,7 +235,10 @@ func (c *Client) AddOrUpdateREADME(orgName string, repoName string, content stri
 		Tree:    tree,
 		Parents: []*github.Commit{{SHA: github.String(currentCommitSHA)}},
 	}
-	newCommitResponse, _, err := c.client.Git.CreateCommit(ctx, orgName, repoName, newCommit)
+        commitOptions := &github.CreateCommitOptions{
+          Signer: nil,
+        }
+	newCommitResponse, _, err := c.client.Git.CreateCommit(ctx, orgName, repoName, newCommit, commitOptions)
 	if err != nil {
 		return fmt.Errorf("error creating commit: %v", err)
 	}
@@ -258,9 +261,9 @@ func (c *Client) CreateWebhook(orgName string, repoName string, webhookURL strin
 
   ctx := context.Background()
 
-  webhookConfig := map[string]interface{}{
-    "url": 	    webhookURL,
-    "content_type": "json",
+  webhookConfig := &github.HookConfig{
+    URL: 	    github.String(webhookURL),
+    ContentType:    github.String("json"),
   }
 
   hook := &github.Hook{
