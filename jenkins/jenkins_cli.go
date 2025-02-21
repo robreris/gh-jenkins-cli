@@ -1,68 +1,71 @@
 package jenkins
 
 import (
-  "fmt"
-  "os"
-  "os/exec"
-  "strings"
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strings"
 )
 
-type CLIClient struct {
-  JenkinsURL string
-  Username   string
-  APIToken   string
-  CLIPath    string
+type APIClient struct {
+	JenkinsURL string
+	Username   string
+	APIToken   string
 }
 
-func NewCLIClient() *CLIClient {
-  return &CLIClient{
-    JenkinsURL: os.Getenv("JENKINS_URL"),
-    Username:   os.Getenv("JENKINS_USER_ID"),
-    APIToken:   os.Getenv("JENKINS_API_TOKEN"),
-    CLIPath:    os.Getenv("JENKINS_CLI_PATH"),
-  }
+func NewAPIClient() *APIClient {
+	return &APIClient{
+		JenkinsURL: os.Getenv("JENKINS_URL"),
+		Username:   os.Getenv("JENKINS_USER_ID"),
+		APIToken:   os.Getenv("JENKINS_API_TOKEN"),
+	}
 }
 
-func (jc *CLIClient) CreateJob(jobName string, configXMLPath string) error {
+func (jc *APIClient) CreateJob(jobName string, configXMLPath string) error {
+	// Read and update the job configuration XML
+	configData, err := os.ReadFile(configXMLPath)
+	if err != nil {
+		return fmt.Errorf("failed to read XML file: %v", err)
+	}
 
-  configData, err := os.ReadFile(configXMLPath)
-  if err != nil {
-    return fmt.Errorf("failed to read XML file: %v", err)
-  }
+	updatedConfig := strings.ReplaceAll(string(configData), "REPO_NAME", jobName)
 
-  updatedConfig := string(configData)
-  updatedConfig = strings.ReplaceAll(updatedConfig, "REPO_NAME", jobName)
+	// Construct the API URL
+	apiURL := fmt.Sprintf("%s/createItem?name=%s", jc.JenkinsURL, jobName)
 
-  tempFile, err := os.CreateTemp("", "jenkins-config-*.xml")
-  if err != nil {
-    return fmt.Errorf("failed to create temporary file: %v", err)
-  }
-  defer os.Remove(tempFile.Name())
+	// Encode authentication credentials (Basic Auth)
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", jc.Username, jc.APIToken)))
 
-  if _, err := tempFile.WriteString(updatedConfig); err != nil {
-    return fmt.Errorf("failed to write to temporary file: %v", err)
-  }
-  tempFile.Close()
+	// Create the HTTP request
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(updatedConfig)))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %v", err)
+	}
 
-  cmd := exec.Command("java", "-jar", jc.CLIPath, "-s", jc.JenkinsURL, "create-job", jobName)
-  cmd.Env = append(os.Environ(),
-    "JENKINS_USER_ID="+jc.Username,
-    "JENKINS_API_TOKEN="+jc.APIToken,
-  )
+	req.Header.Set("Content-Type", "application/xml")
+	req.Header.Set("Authorization", "Basic "+auth)
 
-  tempFileHandle, err := os.Open(tempFile.Name())
-  if err != nil {
-    return fmt.Errorf("failed to open temporary file: %v", err)
-  }
-  defer tempFileHandle.Close()
+	// Make the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to Jenkins: %v", err)
+	}
+	defer resp.Body.Close()
 
-  cmd.Stdin = tempFileHandle
+	// Read the response
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %v", err)
+	}
 
-  output, err := cmd.CombinedOutput()
-  if err != nil {
-    return fmt.Errorf("error creating job: %v, output: %s", err, string(output))
-  } 
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("Jenkins API error: %s, response: %s", resp.Status, string(body))
+	}
 
-  fmt.Println(string(output))
-  return nil
+	fmt.Printf("Job '%s' created successfully.\n", jobName)
+	return nil
 }

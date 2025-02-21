@@ -16,7 +16,7 @@ var createJobCmd = &cobra.Command{
   Use: "create-job",
   Short: "Create a new Jenkins job",
   Run: func(cmd *cobra.Command, args []string) {
-    client := jenkins.NewCLIClient()
+    client := jenkins.NewAPIClient()
 
     if jobName == "" || configXMLPath == "" {
       log.Fatal("Missing some flags.")
