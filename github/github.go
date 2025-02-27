@@ -116,6 +116,23 @@ func (c *Client) GenerateRepoFromTemplate(templateOwner, templateRepo, newRepoNa
   return &repo, nil
 }
 
+func (c *Client) DeleteRepo(templateOwner string, repoName string) error {
+  ctx := context.Background()
+
+  apiPath := fmt.Sprintf("repos/%s/%s", templateOwner, repoName)
+  req, err := c.client.NewRequest("DELETE", apiPath, nil)
+  if err != nil {
+    return fmt.Errorf("error deleting repo %v", err)
+  }
+
+  _, err = c.client.Do(ctx, req, nil)
+  if err != nil {
+     return fmt.Errorf("error deleting repo %v", err)
+  }
+
+  return nil
+}
+
 func (c *Client) WaitForMainBranch(orgName string, repoName string) error {
   ctx := context.Background()
 

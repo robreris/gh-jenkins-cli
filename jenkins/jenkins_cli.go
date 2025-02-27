@@ -69,3 +69,51 @@ func (jc *APIClient) CreateJob(jobName string, configXMLPath string) error {
 	fmt.Printf("Job '%s' created successfully.\n", jobName)
 	return nil
 }
+
+func (jc *APIClient) DeleteJob(jobName string) error {
+
+        jenkinsURL := strings.TrimSuffix(jc.JenkinsURL, "/")        
+
+        // Check to ensure job exists
+        apiURL := fmt.Sprintf("%s/job/%s/api/json", jenkinsURL, jobName)
+        req, err := http.NewRequest("GET", apiURL, nil)
+        if err != nil {
+                return fmt.Errorf("error finding existing Jenkins pipeline with that name: %v", err)
+        }
+        
+
+	// Construct the API URL
+	apiURL = fmt.Sprintf("%s/job/%s/doDelete", jenkinsURL, jobName)
+
+	// Encode authentication credentials (Basic Auth)
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", jc.Username, jc.APIToken)))
+
+	// Create the HTTP request
+	req, err = http.NewRequest("POST", apiURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+
+	req.Header.Set("Authorization", "Basic "+auth)
+
+	// Make the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to Jenkins: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Jenkins API error: %s, response: %s", resp.Status, string(body))
+	}
+
+	fmt.Printf("Job '%s' deleted successfully.\n", jobName)
+	return nil
+}
