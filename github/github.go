@@ -80,10 +80,12 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
     return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
   }
 
+  /*
   err = c.AddBranchProtection(orgName, name)
   if err != nil {
     return nil, err
   }
+  */
 
   return createdRepo, nil
 
