@@ -22,7 +22,7 @@ var createRepoCmd = &cobra.Command{
       fmt.Println("Error creating repository:", err)
       return
     }
-    fmt.Println("Repository '%s' created successfully at %s\n", repo.GetName(), repo.GetHTMLURL())
+    fmt.Printf("Repository '%s' created successfully at '%s'\n", repoName, repo.GetHTMLURL())
   },
 }
 

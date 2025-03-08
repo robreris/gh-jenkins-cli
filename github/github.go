@@ -7,6 +7,7 @@ import (
   "net/http"
   "errors"
   "time"
+  "log"
 
   "golang.org/x/oauth2"
   "github.com/google/go-github/v68/github"
@@ -144,7 +145,7 @@ func (c *Client) WaitForMainBranch(orgName string, repoName string) error {
     if err == nil && branch != nil {
       return nil
     }
-    fmt.Printf("Waiting for main branch in repository '%s' to be ready (attempt %d/%d)...\n")
+    fmt.Printf("Waiting for main branch in repository '%s' to be ready (attempt %d/%d)...\n", repoName, i, maxRetries)
     time.Sleep(retryDelay)
   }
   
@@ -326,4 +327,22 @@ func (c *Client) WaitForStatusCheck(orgName, repoName, branch, statusCheck strin
   }
 
   return fmt.Errorf("status check '%s' not reported after multiple attempts", statusCheck)
+}
+
+func (c *Client) AddCollaborators(owner, repo string, collaborators []string, permission string) error {
+	ctx := context.Background()
+
+        collabOpts := &github.RepositoryAddCollaboratorOptions{
+               Permission: permission,
+        }
+
+	for _, collaborator := range collaborators {
+		_, _, err := c.client.Repositories.AddCollaborator(ctx, owner, repo, collaborator, collabOpts)
+		if err != nil {
+			log.Printf("Failed to add collaborator %s: %v", collaborator, err)
+			return err
+		}
+		fmt.Printf("Successfully added %s to %s/%s with %s permission\n", collaborator, owner, repo, permission)
+	}
+	return nil
 }
