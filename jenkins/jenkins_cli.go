@@ -72,15 +72,14 @@ func (jc *APIClient) CreateJob(jobName string, configXMLPath string) error {
 
 func (jc *APIClient) DeleteJob(jobName string) error {
 
-        jenkinsURL := strings.TrimSuffix(jc.JenkinsURL, "/")        
+	jenkinsURL := strings.TrimSuffix(jc.JenkinsURL, "/")
 
-        // Check to ensure job exists
-        apiURL := fmt.Sprintf("%s/job/%s/api/json", jenkinsURL, jobName)
-        req, err := http.NewRequest("GET", apiURL, nil)
-        if err != nil {
-                return fmt.Errorf("error finding existing Jenkins pipeline with that name: %v", err)
-        }
-        
+	// Check to ensure job exists
+	apiURL := fmt.Sprintf("%s/job/%s/api/json", jenkinsURL, jobName)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return fmt.Errorf("error finding existing Jenkins pipeline with that name: %v", err)
+	}
 
 	// Construct the API URL
 	apiURL = fmt.Sprintf("%s/job/%s/doDelete", jenkinsURL, jobName)
