@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+        "log"
         "strings"
 	"github.com/google/go-github/v68/github"
 	"golang.org/x/oauth2"
@@ -358,4 +359,23 @@ func (c *Client) WaitForStatusCheck(orgName, repoName, branch, statusCheck strin
 	}
 
 	return fmt.Errorf("status check '%s' not reported after multiple attempts", statusCheck)
+}
+
+
+func (c *Client) AddCollaborators(owner, repo string, collaborators []string, permission string) error {
+	ctx := context.Background()
+
+        collabOpts := &github.RepositoryAddCollaboratorOptions{
+               Permission: permission,
+        }
+
+	for _, collaborator := range collaborators {
+		_, _, err := c.client.Repositories.AddCollaborator(ctx, owner, repo, collaborator, collabOpts)
+		if err != nil {
+			log.Printf("Failed to add collaborator %s: %v", collaborator, err)
+			return err
+		}
+		fmt.Printf("Successfully added %s to %s/%s with %s permission\n", collaborator, owner, repo, permission)
+	}
+	return nil
 }

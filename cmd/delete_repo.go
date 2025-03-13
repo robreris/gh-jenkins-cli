@@ -16,7 +16,7 @@ var deleteRepoCmd = &cobra.Command{
 			fmt.Println("Error deleting repository:", err)
 			return
 		}
-		fmt.Printf("Repository '%s' deleted successfully.", repoName)
+		fmt.Printf("Repository '%s' deleted successfully.\n", repoName)
 	},
 }
 
