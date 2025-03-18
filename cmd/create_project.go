@@ -36,7 +36,7 @@ var createProjectCmd = &cobra.Command{
 		fmt.Printf("Jenkins job %s successfully created.", repoName)
 
 		ghClient := github.NewClient()
-		repo, err := ghClient.CreateRepo("FortinetCloudCSE", repoName, "UserRepo", private, appId, "yes")
+		repo, err := ghClient.CreateRepo("FortinetCloudCSE", repoName, "UserRepo", private, "yes", appId)
 		if err != nil {
 			fmt.Println("Error creating repository:", err)
 			return

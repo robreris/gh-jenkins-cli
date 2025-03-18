@@ -33,7 +33,7 @@ var createFDSCmd = &cobra.Command{
 			}
 
 			fmt.Println("To create an app, run: ")
-			fmt.Println("./gh-jenkins-cli create-fds-app --org-id <organization ID> --app-name <desired application name>")
+			fmt.Println("./gh-jenkins-cli create-devsec --org-id <organization ID> --app-name <desired application name>")
 		} else {
 			orgVal, err = strconv.Atoi(orgId)
 			appID, err = client.CreateApp(&orgVal, appName)

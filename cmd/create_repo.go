@@ -17,7 +17,7 @@ var createRepoCmd = &cobra.Command{
 	Short: "Create a new repo in FortinetCloudCSE org",
 	Run: func(cmd *cobra.Command, args []string) {
 		client := github.NewClient()
-		repo, err := client.CreateRepo("FortinetCloudCSE", repoName, "UserRepo", private)
+		repo, err := client.CreateRepo("FortinetCloudCSE", repoName, "UserRepo", private, "no")
 		if err != nil {
 			fmt.Println("Error creating repository:", err)
 			return

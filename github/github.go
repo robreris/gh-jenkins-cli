@@ -15,6 +15,7 @@ import (
 
 type Client struct {
 	client *github.Client
+        JenkinsUrl string
 }
 
 func NewClient() *Client {
@@ -27,13 +28,21 @@ func NewClient() *Client {
 		os.Exit(1)
 	}
 
+        jenkinsUrl := os.Getenv("JENKINS_URL")
+        if jenkinsUrl == "" {
+                fmt.Println("Warning: JENKINS_URL environment variable not set.")
+        }
+
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
 	tc = oauth2.NewClient(ctx, ts)
 
 	ghClient := github.NewClient(tc)
-	return &Client{client: ghClient}
+	return &Client{
+            client: ghClient,
+            JenkinsUrl: jenkinsUrl,
+        }
 }
 
 func (c *Client) CreateRepo(orgName string, name string, templateRepo string, private bool, pipelineOpt ...string) (*github.Repository, error) {
@@ -63,23 +72,32 @@ To view the workshop, please go here: [GitHub Pages Link](%s)
 
 For more information on creating these workshops, visit [FortinetCloudCSE User Repo](https://fortinetcloudcse.github.io/UserRepo/)
 `, name, pagesURL)
+ 
+        if pipelineOpt[0] == "yes" {
 
-	err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], pipelineOpt[1])
-	if err != nil {
-		return nil, fmt.Errorf("error updating README.md: %v", err)
-	}
+            err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], pipelineOpt[1])
+            if err != nil {
+		return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
+            }
+  	    //webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
+            webhookURL := c.JenkinsUrl+"/github-webhook/"
+	    err = c.CreateWebhook(orgName, name, webhookURL)
+	    if err != nil {
+	    	return nil, fmt.Errorf("error creating webhook: %v", err)
+	    }
 
-	webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
-	err = c.CreateWebhook(orgName, name, webhookURL)
-	if err != nil {
-		return nil, fmt.Errorf("error creating webhook: %v", err)
-	}
+	    statusCheck := "ci/jenkins/build-status"
+	    err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
+	    if err != nil {
+	    	return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
+	    }
+	} else {
+            err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], "")
+            if err != nil {
+		return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
+            }
+        }
 
-	statusCheck := "ci/jenkins/build-status"
-	err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
-	if err != nil {
-		return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
-	}
 
 	/*
 	  err = c.AddBranchProtection(orgName, name)
@@ -207,14 +225,16 @@ func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, err
 		return "", fmt.Errorf("error fetching GitHub Pages URL: %v", err)
 	}
 
+        fmt.Println("in enable pages func, req:", req)
+
 	return pagesResponse.HTMLURL, nil
 }
 
 func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent string, pipelineOpts ...string) error {
 	ctx := context.Background()
 
-	fdsAppId := pipelineOpts[0]
-	jenkinsUpdate := pipelineOpts[1]
+        jenkinsUpdate := pipelineOpts[0]
+	fdsAppId := pipelineOpts[1]
 
 	// Get the latest commit and tree SHA from the main branch
 	branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", 1)
@@ -305,7 +325,7 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 		return fmt.Errorf("error updating branch reference: %v", err)
 	}
 
-	fmt.Println("Updated README, fdevsec.yaml, and Jenkinsfile")
+	fmt.Println("README (and/or Jenkinsfile and fdevsec.yaml if create-project invoked) updated successfully.")
 	return nil
 }
 
