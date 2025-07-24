@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-        "log"
-        "strings"
 	"github.com/google/go-github/v68/github"
 	"golang.org/x/oauth2"
+	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 )
 
 type Client struct {
-	client *github.Client
-        JenkinsUrl string
+	client     *github.Client
+	JenkinsUrl string
 }
 
 func NewClient() *Client {
@@ -28,10 +29,10 @@ func NewClient() *Client {
 		os.Exit(1)
 	}
 
-        jenkinsUrl := os.Getenv("JENKINS_URL")
-        if jenkinsUrl == "" {
-                fmt.Println("Warning: JENKINS_URL environment variable not set.")
-        }
+	jenkinsUrl := os.Getenv("JENKINS_URL")
+	if jenkinsUrl == "" {
+		fmt.Println("Warning: JENKINS_URL environment variable not set.")
+	}
 
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -40,9 +41,9 @@ func NewClient() *Client {
 
 	ghClient := github.NewClient(tc)
 	return &Client{
-            client: ghClient,
-            JenkinsUrl: jenkinsUrl,
-        }
+		client:     ghClient,
+		JenkinsUrl: jenkinsUrl,
+	}
 }
 
 func (c *Client) CreateRepo(orgName string, name string, templateRepo string, private bool, pipelineOpt ...string) (*github.Repository, error) {
@@ -72,39 +73,36 @@ To view the workshop, please go here: [GitHub Pages Link](%s)
 
 For more information on creating these workshops, visit [FortinetCloudCSE User Repo](https://fortinetcloudcse.github.io/UserRepo/)
 `, name, pagesURL)
- 
-        if pipelineOpt[0] == "yes" {
 
-            err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], pipelineOpt[1])
-            if err != nil {
-		return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
-            }
-  	    //webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
-            webhookURL := c.JenkinsUrl+"/github-webhook/"
-	    err = c.CreateWebhook(orgName, name, webhookURL)
-	    if err != nil {
-	    	return nil, fmt.Errorf("error creating webhook: %v", err)
-	    }
+	if pipelineOpt[0] == "yes" {
 
-	    statusCheck := "ci/jenkins/build-status"
-	    err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
-	    if err != nil {
-	    	return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
-	    }
+		err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], pipelineOpt[1])
+		if err != nil {
+			return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
+		}
+		//webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
+		webhookURL := c.JenkinsUrl + "/github-webhook/"
+		err = c.CreateWebhook(orgName, name, webhookURL)
+		if err != nil {
+			return nil, fmt.Errorf("error creating webhook: %v", err)
+		}
+
+		statusCheck := "ci/jenkins/build-status"
+		err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
+		if err != nil {
+			return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
+		}
 	} else {
-            err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], "")
-            if err != nil {
-		return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
-            }
-        }
+		err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], "")
+		if err != nil {
+			return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
+		}
+	}
 
-
-	/*
-	  err = c.AddBranchProtection(orgName, name)
-	  if err != nil {
-	    return nil, err
-	  }
-	*/
+	err = c.AddBranchProtection(orgName, name)
+	if err != nil {
+		return nil, err
+	}
 
 	return createdRepo, nil
 
@@ -181,9 +179,9 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
 		EnforceAdmins: false,
 		Restrictions:  nil,
 		RequiredPullRequestReviews: &github.PullRequestReviewsEnforcementRequest{
-			DismissStaleReviews:          true,
-			RequireCodeOwnerReviews:      true,
-			RequiredApprovingReviewCount: 1,
+			DismissStaleReviews:          false,
+			RequireCodeOwnerReviews:      false,
+			RequiredApprovingReviewCount: 0,
 		},
 	}
 
@@ -200,6 +198,7 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
 func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, error) {
 	ctx := context.Background()
 	opts := &github.Pages{
+		BuildType: github.String("workflow"),
 		Source: &github.PagesSource{
 			Branch: github.String("main"),
 			Path:   github.String("/docs"),
@@ -225,7 +224,7 @@ func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, err
 		return "", fmt.Errorf("error fetching GitHub Pages URL: %v", err)
 	}
 
-        fmt.Println("in enable pages func, req:", req)
+	fmt.Println("in enable pages func, req:", req)
 
 	return pagesResponse.HTMLURL, nil
 }
@@ -233,7 +232,7 @@ func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, err
 func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent string, pipelineOpts ...string) error {
 	ctx := context.Background()
 
-        jenkinsUpdate := pipelineOpts[0]
+	jenkinsUpdate := pipelineOpts[0]
 	fdsAppId := pipelineOpts[1]
 
 	// Get the latest commit and tree SHA from the main branch
@@ -256,9 +255,9 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 	// Update FortiDevSec Application ID
 	if fdsAppId != "" {
 		fdsConfigData, err := os.ReadFile("github/fdevsec.yaml")
-                if err != nil {
-                      return fmt.Errorf("error finding fdevsec.yaml in UpdateRepoFiles function call")
-                }
+		if err != nil {
+			return fmt.Errorf("error finding fdevsec.yaml in UpdateRepoFiles function call")
+		}
 		fdsPlaceholder := "<insert app id here>"
 		updatedFDSConfig := strings.ReplaceAll(string(fdsConfigData), fdsPlaceholder, fdsAppId)
 		files["fdevsec.yaml"] = updatedFDSConfig
@@ -267,13 +266,42 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 	// Enable Jenkins
 	if jenkinsUpdate == "yes" {
 		jenkinsConfigData, err := os.ReadFile("github/Jenkinsfile")
-                if err != nil {
-                      return fmt.Errorf("error finding jenkinsfile in UpdateRepoFiles function call")
-                }
-		jenkinsPlaceholder := "when { expression { false } }"
-		jenkinsPlaceholderReplace := "when { expression { true } }"
-		updatedJenkinsConfig := strings.ReplaceAll(string(jenkinsConfigData), jenkinsPlaceholder, jenkinsPlaceholderReplace)
-		files["Jenkinsfile"] = updatedJenkinsConfig
+		if err != nil {
+			return fmt.Errorf("error reading Jenkinsfile in UpdateRepoFiles function call")
+		}
+		content := string(jenkinsConfigData)
+
+		// Define which "when" expressions to replace: 1-based index (e.g., []int{2} to replace only the second one)
+		indicesToReplace := map[int]bool{
+			2: true, // only replace the 2nd instance
+		}
+
+		// Match all occurrences of the when-expression block
+		re := regexp.MustCompile(`when\s*\{\s*expression\s*\{\s*false\s*\}\s*\}`)
+		matches := re.FindAllStringIndex(content, -1)
+
+		if len(matches) == 0 {
+			fmt.Println("No 'when { expression { false } }' blocks found.")
+			files["Jenkinsfile"] = content
+			return nil
+		}
+
+		// Replace only the specified indices
+		var updatedContent string
+		lastIndex := 0
+		for i, match := range matches {
+			start, end := match[0], match[1]
+			updatedContent += content[lastIndex:start]
+			if indicesToReplace[i+1] { // 1-based index
+				updatedContent += "when { expression { true } }"
+			} else {
+				updatedContent += content[start:end]
+			}
+			lastIndex = end
+		}
+		updatedContent += content[lastIndex:] // add the rest
+
+		files["Jenkinsfile"] = updatedContent
 	}
 
 	var treeEntries []*github.TreeEntry
@@ -381,13 +409,12 @@ func (c *Client) WaitForStatusCheck(orgName, repoName, branch, statusCheck strin
 	return fmt.Errorf("status check '%s' not reported after multiple attempts", statusCheck)
 }
 
-
 func (c *Client) AddCollaborators(owner, repo string, collaborators []string, permission string) error {
 	ctx := context.Background()
 
-        collabOpts := &github.RepositoryAddCollaboratorOptions{
-               Permission: permission,
-        }
+	collabOpts := &github.RepositoryAddCollaboratorOptions{
+		Permission: permission,
+	}
 
 	for _, collaborator := range collaborators {
 		_, _, err := c.client.Repositories.AddCollaborator(ctx, owner, repo, collaborator, collabOpts)

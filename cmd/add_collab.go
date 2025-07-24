@@ -5,14 +5,14 @@ import (
 	"log"
 	"strings"
 
+	"github.com/robreris/gh-jenkins-cli/github"
 	"github.com/spf13/cobra"
-        "github.com/robreris/gh-jenkins-cli/github"
 )
 
 // Flags
 var (
 	collaborators string // Comma-separated list of collaborators
-	permission   string
+	permission    string
 )
 
 // addCollabCmd represents the add_collab command
@@ -41,7 +41,7 @@ Example usage:
 	},
 }
 
-func init() { 
+func init() {
 	rootCmd.AddCommand(addCollabCmd)
 	addCollabCmd.Flags().StringVarP(&orgName, "org", "o", "FortinetCloudCSE", "GitHub repository organization (required)")
 	addCollabCmd.Flags().StringVarP(&repoName, "repo-name", "r", "", "GitHub repository name (required)")
@@ -50,4 +50,3 @@ func init() {
 	addCollabCmd.MarkFlagRequired("repo-name")
 	addCollabCmd.MarkFlagRequired("collaborators")
 }
-

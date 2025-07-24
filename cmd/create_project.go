@@ -14,7 +14,7 @@ import (
 var (
 	fdsOrgId       int
 	jenkinsXMLPath string
-        collabNames    []string
+	collabNames    []string
 )
 
 var createProjectCmd = &cobra.Command{
@@ -41,11 +41,11 @@ var createProjectCmd = &cobra.Command{
 			fmt.Println("Error creating repository:", err)
 			return
 		}
-                _ = ghClient.AddCollaborators("FortinetCloudCSE", repoName, collabNames, "push")
-                if err != nil {
-                        fmt.Println("Error adding collaborators:", err)
-                        return
-                }
+		_ = ghClient.AddCollaborators("FortinetCloudCSE", repoName, collabNames, "push")
+		if err != nil {
+			fmt.Println("Error adding collaborators:", err)
+			return
+		}
 
 		fmt.Printf("Repository '%s' created successfully at %s\n", repo.GetName(), repo.GetHTMLURL())
 	},
@@ -56,7 +56,7 @@ func init() {
 	createProjectCmd.Flags().StringVarP(&repoName, "project-name", "p", "", "Name of the project/repo")
 	createProjectCmd.Flags().IntVarP(&fdsOrgId, "fds-org-id", "f", 0, "FortiDevSec Organization ID (not what is showing in the console--need to get from the API.")
 	createProjectCmd.Flags().StringVarP(&jenkinsXMLPath, "jenkins-xml", "j", "jenkins/template-config.xml", "Path to Jenkins config XML file.")
-        createProjectCmd.Flags().StringSliceVarP(&collabNames, "collab-names", "u", []string{}, "GitHub usernames to add as collaborators. Enter each username separated by a comma. e.g. -c user1,user2,user3.")
+	createProjectCmd.Flags().StringSliceVarP(&collabNames, "collab-names", "u", []string{}, "GitHub usernames to add as collaborators. Enter each username separated by a comma. e.g. -c user1,user2,user3.")
 	createProjectCmd.Flags().BoolVarP(&private, "private", "r", false, "Make repository private")
 	createProjectCmd.MarkFlagRequired("project-name")
 	createProjectCmd.MarkFlagRequired("fds-org-id")
