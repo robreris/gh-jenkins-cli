@@ -55,6 +55,12 @@ pipeline {
                 sh 'docker run --rm --env-file /tmp/env --mount type=bind,source=$PWD,target=/scan registry.fortidevsec.forticloud.com/fdevsec_sast:latest'
             }
         }
+
+        stage('Clean workspace') {
+            steps {
+                deleteDir()
+            }
+        }
     }
     post {
      success {
