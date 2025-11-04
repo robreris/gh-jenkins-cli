@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -46,7 +45,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) CreateRepo(orgName string, name string, templateRepo string, private bool, pipelineOpt ...string) (*github.Repository, error) {
+func (c *Client) CreateRepo(orgName string, name string, templateRepo string, private bool, enablePipeline bool) (*github.Repository, error) {
 
 	createdRepo, err := c.GenerateRepoFromTemplate(orgName, templateRepo, name, private)
 	if err != nil {
@@ -74,12 +73,8 @@ To view the workshop, please go here: [GitHub Pages Link](%s)
 For more information on creating these workshops, visit [FortinetCloudCSE User Repo](https://fortinetcloudcse.github.io/UserRepo/)
 `, name, pagesURL)
 
-	if pipelineOpt[0] == "yes" {
-
-		err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], pipelineOpt[1])
-		if err != nil {
-			return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
-		}
+        //Need UpdateRepo in both blocks since order of execution is important here
+	if enablePipeline == true {
 		//webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
 		webhookURL := c.JenkinsUrl + "/github-webhook/"
 		err = c.CreateWebhook(orgName, name, webhookURL)
@@ -87,17 +82,22 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
 			return nil, fmt.Errorf("error creating webhook: %v", err)
 		}
 
+	        err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
+	        if err != nil {
+		        return nil, fmt.Errorf("error updating repo files: %v", err)
+	        }
+
 		statusCheck := "ci/jenkins/build-status"
 		err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
 		}
 	} else {
-		err = c.UpdateRepoFiles(orgName, name, readmeContent, pipelineOpt[0], "")
-		if err != nil {
-			return nil, fmt.Errorf("error updating fdevsec.yaml/README.md: %v", err)
-		}
-	}
+	        err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
+	        if err != nil {
+		        return nil, fmt.Errorf("error updating repo files: %v", err)
+	        }
+        }
 
 	err = c.AddBranchProtection(orgName, name)
 	if err != nil {
@@ -229,11 +229,8 @@ func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, err
 	return pagesResponse.HTMLURL, nil
 }
 
-func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent string, pipelineOpts ...string) error {
+func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent string, enablePipeline bool) error {
 	ctx := context.Background()
-
-	jenkinsUpdate := pipelineOpts[0]
-	fdsAppId := pipelineOpts[1]
 
 	// Get the latest commit and tree SHA from the main branch
 	branch, _, err := c.client.Repositories.GetBranch(ctx, orgName, repoName, "main", 1)
@@ -252,19 +249,8 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 		"README.md": readmeContent,
 	}
 
-	// Update FortiDevSec Application ID
-	if fdsAppId != "" {
-		fdsConfigData, err := os.ReadFile("github/fdevsec.yaml")
-		if err != nil {
-			return fmt.Errorf("error finding fdevsec.yaml in UpdateRepoFiles function call")
-		}
-		fdsPlaceholder := "<insert app id here>"
-		updatedFDSConfig := strings.ReplaceAll(string(fdsConfigData), fdsPlaceholder, fdsAppId)
-		files["fdevsec.yaml"] = updatedFDSConfig
-	}
-
 	// Enable Jenkins
-	if jenkinsUpdate == "yes" {
+	if enablePipeline {
 		jenkinsConfigData, err := os.ReadFile("github/Jenkinsfile")
 		if err != nil {
 			return fmt.Errorf("error reading Jenkinsfile in UpdateRepoFiles function call")
@@ -353,7 +339,7 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 		return fmt.Errorf("error updating branch reference: %v", err)
 	}
 
-	fmt.Println("README (and/or Jenkinsfile and fdevsec.yaml if create-project invoked) updated successfully.")
+	fmt.Println("README (and Jenkinsfile if create-project invoked) updated successfully.")
 	return nil
 }
 
