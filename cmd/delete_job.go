@@ -13,10 +13,6 @@ var deleteJobCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client := jenkins.NewAPIClient()
 
-		if jobName == "" || configXMLPath == "" {
-			log.Fatal("Missing some flags.")
-		}
-
 		if err := client.DeleteJob(jobName); err != nil {
 			log.Fatal("Error deleting Jenkins job: ", err)
 		}

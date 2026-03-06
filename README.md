@@ -54,7 +54,7 @@ In order to use the tool, you'll need a GitHub personal access token with all bo
 You'll also need a Jenkins API token. Log in to Jenkins, click your username at the top right of the screen, click **Security**, then **Add new Token**, give it a name, and click **Generate**. Save the token to a safe place. Once you have these items, you can populate the provided script to set the environment variables needed for the tool to run.
 
 ```bash
-mv setenv-template.sh setenv.sh
+cp setenv-template.sh setenv.sh
 
 # Populate the script and run it.
 source setenv.sh
@@ -87,12 +87,30 @@ source setenv.sh
 # Create a new GitHub repo
 ./gh-jenkins-cli create-repo -n my-new-repo
 
+# Create a Jenkins job
+./gh-jenkins-cli create-job -n my-new-repo
+
+# Create a full project (Jenkins job + GitHub repo with pipeline enabled)
+./gh-jenkins-cli create-project -p my-new-repo
+
+# Create a project and add collaborators
+./gh-jenkins-cli create-project -p my-new-repo -u user1,user2,user3
+
+# Create a private project with a custom Jenkins config XML
+./gh-jenkins-cli create-project -p my-new-repo -r -j path/to/config.xml
+
 # Add collaborators with push (default) permissions
 ./gh-jenkins-cli add-collab -c user1,user2,user3 -r my-new-repo
 
-# Create an associated Jenkins job
-./gh-jenkins-cli create-job -n my-new-repo
+# Delete a Jenkins job
+./gh-jenkins-cli delete-job -n my-new-repo
+
+# Delete a GitHub repo
+./gh-jenkins-cli delete-repo -n my-new-repo
 
 # Delete an entire project (Jenkins job + GitHub repo)
 ./gh-jenkins-cli delete-project -p my-new-repo
+
+# Delete a project where the Jenkins job name differs from the repo name
+./gh-jenkins-cli delete-project -p my-new-repo -j my-jenkins-job
 ```

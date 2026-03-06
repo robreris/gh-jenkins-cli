@@ -7,7 +7,6 @@ import (
 	"github.com/google/go-github/v68/github"
 	"golang.org/x/oauth2"
 	"log"
-	"net/http"
 	"os"
 	"regexp"
 	"time"
@@ -20,7 +19,6 @@ type Client struct {
 
 func NewClient() *Client {
 	ctx := context.Background()
-	var tc *http.Client
 
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -36,7 +34,7 @@ func NewClient() *Client {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
-	tc = oauth2.NewClient(ctx, ts)
+	tc := oauth2.NewClient(ctx, ts)
 
 	ghClient := github.NewClient(tc)
 	return &Client{
@@ -74,7 +72,7 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
 `, name, pagesURL)
 
         //Need UpdateRepo in both blocks since order of execution is important here
-	if enablePipeline == true {
+	if enablePipeline {
 		//webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
 		webhookURL := c.JenkinsUrl + "/github-webhook/"
 		err = c.CreateWebhook(orgName, name, webhookURL)
@@ -185,8 +183,6 @@ func (c *Client) AddBranchProtection(orgName string, repoName string) error {
 		},
 	}
 
-	fmt.Printf("Branch protection payload: %+v\n", protectionRequest)
-
 	_, _, err := c.client.Repositories.UpdateBranchProtection(ctx, orgName, repoName, "main", protectionRequest)
 	if err != nil {
 		return err
@@ -223,8 +219,6 @@ func (c *Client) EnableGitHubPages(orgName string, repoName string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("error fetching GitHub Pages URL: %v", err)
 	}
-
-	fmt.Println("in enable pages func, req:", req)
 
 	return pagesResponse.HTMLURL, nil
 }
@@ -320,10 +314,7 @@ func (c *Client) UpdateRepoFiles(orgName string, repoName string, readmeContent 
 		Tree:    tree,
 		Parents: []*github.Commit{{SHA: github.String(currentCommitSHA)}},
 	}
-	commitOptions := &github.CreateCommitOptions{
-		Signer: nil,
-	}
-	newCommitResponse, _, err := c.client.Git.CreateCommit(ctx, orgName, repoName, newCommit, commitOptions)
+	newCommitResponse, _, err := c.client.Git.CreateCommit(ctx, orgName, repoName, newCommit, nil)
 	if err != nil {
 		return fmt.Errorf("error creating commit: %v", err)
 	}

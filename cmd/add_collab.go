@@ -18,8 +18,8 @@ var (
 // addCollabCmd represents the add_collab command
 var addCollabCmd = &cobra.Command{
 	Use:   "add-collab",
-	Short: "Add collaborators to a GitHub repoNamesitory",
-	Long: `This command allows you to add one or more collaborators to a specified GitHub repoNamesitory.
+	Short: "Add collaborators to a GitHub repository",
+	Long: `This command allows you to add one or more collaborators to a specified GitHub repository.
 	
 Example usage:
   mycli add-collab --org myorg --repo-name myrepoName --collaborators user1,user2 --permission push

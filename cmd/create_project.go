@@ -32,8 +32,7 @@ var createProjectCmd = &cobra.Command{
 			fmt.Println("Error creating repository:", err)
 			return
 		}
-		_ = ghClient.AddCollaborators("FortinetCloudCSE", repoName, collabNames, "push")
-		if err != nil {
+		if err := ghClient.AddCollaborators("FortinetCloudCSE", repoName, collabNames, "push"); err != nil {
 			fmt.Println("Error adding collaborators:", err)
 			return
 		}
