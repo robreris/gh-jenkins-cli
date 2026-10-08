@@ -70,6 +70,12 @@ source setenv.sh
 
 ```
 
+Set `JENKINS_URL` to the controller base URL, such as
+`https://jenkins.fortinetcloudcse.com` (include any Jenkins context path).
+Trailing slashes are accepted. The default pipeline template checks out GitHub
+over HTTPS using the `jenkins-git` username/password credential, with the GitHub
+PAT as its password. The credential must have access to the repository.
+
 ### Available Commands
 
 | Command         | Description                                                 |

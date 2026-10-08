@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -71,19 +72,18 @@ To view the workshop, please go here: [GitHub Pages Link](%s)
 For more information on creating these workshops, visit [FortinetCloudCSE User Repo](https://fortinetcloudcse.github.io/UserRepo/)
 `, name, pagesURL)
 
-        //Need UpdateRepo in both blocks since order of execution is important here
+	//Need UpdateRepo in both blocks since order of execution is important here
 	if enablePipeline {
-		//webhookURL := "https://jenkins.fortinetcloudcse.com:8443/github-webhook/"
-		webhookURL := c.JenkinsUrl + "/github-webhook/"
+		webhookURL := strings.TrimRight(strings.TrimSpace(c.JenkinsUrl), "/") + "/github-webhook/"
 		err = c.CreateWebhook(orgName, name, webhookURL)
 		if err != nil {
 			return nil, fmt.Errorf("error creating webhook: %v", err)
 		}
 
-	        err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
-	        if err != nil {
-		        return nil, fmt.Errorf("error updating repo files: %v", err)
-	        }
+		err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
+		if err != nil {
+			return nil, fmt.Errorf("error updating repo files: %v", err)
+		}
 
 		statusCheck := "ci/jenkins/build-status"
 		err = c.WaitForStatusCheck(orgName, name, "main", statusCheck)
@@ -91,11 +91,11 @@ For more information on creating these workshops, visit [FortinetCloudCSE User R
 			return nil, fmt.Errorf("error waiting for status check '%s', %v", statusCheck, err)
 		}
 	} else {
-	        err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
-	        if err != nil {
-		        return nil, fmt.Errorf("error updating repo files: %v", err)
-	        }
-        }
+		err = c.UpdateRepoFiles(orgName, name, readmeContent, enablePipeline)
+		if err != nil {
+			return nil, fmt.Errorf("error updating repo files: %v", err)
+		}
+	}
 
 	err = c.AddBranchProtection(orgName, name)
 	if err != nil {

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./setenv.sh)",
+      "Read(./setenv.sh)",
+      "Grep(./setenv.sh)"
+    ]
+  }
+}
